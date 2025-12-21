@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Генератор Паролей + iCloud Keychain</title>
+    <meta name="description" content="Безопасный генератор паролей с сохранением в Apple iCloud Keychain.">
+    <meta name="theme-color" content="#f2f2f7">
+
+    <style>
+        /* * =========================================
+         * CSS: Apple-style Design System
+         * =========================================
+         */
+        :root {
+            --bg-color: #f2f2f7;
+            --card-bg: #ffffff;
+            --text-primary: #1c1c1e;
+            --text-secondary: #8e8e93;
+            --accent-color: #007aff;
+            --accent-hover: #0063d1;
+            --success-color: #34c759;
+            --danger-color: #ff3b30;
+            --border-color: #c6c6c8;
+            --input-bg: #e5e5ea;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --radius: 12px;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        /* Темная тема (Dark Mode) */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #000000;
+                --card-bg: #1c1c1e;
+                --text-primary: #ffffff;
+                --text-secondary: #98989d;
+                --accent-color: #0a84ff;
+                --accent-hover: #409cff;
+                --border-color: #38383a;
+                --input-bg: #2c2c2e;
+                --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            }
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            transition: background-color 0.3s ease;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Карточки */
+        .card {
+            background-color: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+        }
+
+        h1 { margin: 0 0 8px 0; font-size: 24px; text-align: center; }
+        p.subtitle { margin: 0 0 24px 0; text-align: center; color: var(--text-secondary); font-size: 14px; }
+
+        /* Поле отображения пароля */
+        .password-display-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        .password-display {
+            width: 100%;
+            padding: 16px;
+            font-family: "SF Mono", "Menlo", "Monaco", "Courier New", monospace;
+            font-size: 20px;
+            background-color: var(--input-bg);
+            border: none;
+            border-radius: var(--radius);
+            color: var(--text-primary);
+            text-align: center;
+            outline: none;
+            word-break: break-all;
+        }
+
+        /* Индикатор надежности */
+        .strength-bar {
+            height: 4px;
+            background-color: var(--input-bg);
+            margin-top: 8px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .strength-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+
+        /* Контролы */
+        .controls { display: flex; flex-direction: column; gap: 16px; }
+        
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        label { font-size: 16px; user-select: none; cursor: pointer; }
+
+        /* Ползунок (Slider) */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: var(--input-bg);
+            border-radius: 3px;
+            outline: none;
+            margin-top: 10px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: var(--card-bg);
+            border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            border: 0.5px solid var(--border-color);
+            cursor: pointer;
+        }
+
+        /* Чекбоксы (Switch style for iOS) */
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--accent-color);
+        }
+
+        /* Кнопки */
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        .btn:active { transform: scale(0.98); opacity: 0.8; }
+        
+        .btn-primary { background-color: var(--accent-color); color: white; margin-bottom: 12px; }
+        .btn-secondary { background-color: var(--input-bg); color: var(--text-primary); }
+
+        /* Форма сохранения */
+        .save-section { margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 20px; }
+        .save-section h2 { font-size: 18px; margin-bottom: 12px; }
+        
+        .input-group { margin-bottom: 12px; }
+        .input-field {
+            width: 100%;
+            padding: 14px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+            background-color: var(--card-bg);
+            color: var(--text-primary);
+            font-size: 16px;
+        }
+        /* Скрываем реальное поле пароля визуально, но оставляем доступным для браузера */
+        .hidden-visually {
+            opacity: 0.6; /* Оставляем видимым для понимания UX, но серым */
+            background-color: var(--input-bg);
+            pointer-events: none; /* Запрещаем редактирование руками */
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 100;
+        }
+        .toast.show { opacity: 1; }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h1>Пароли</h1>
+        <p class="subtitle">Генератор и сохранение в Keychain</p>
+
+        <div class="password-display-wrapper">
+            <div id="passwordOutput" class="password-display">...</div>
+            <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+        </div>
+
+        <div class="controls">
+            <div>
+                <div class="control-row">
+                    <label>Длина: <span id="lengthVal">16</span></label>
+                </div>
+                <input type="range" id="lengthRange" min="8" max="32" value="16">
+            </div>
+
+            <div class="control-row">
+                <label for="cbUppercase">ABC (Заглавные)</label>
+                <input type="checkbox" id="cbUppercase" checked>
+            </div>
+            <div class="control-row">
+                <label for="cbLowercase">abc (Строчные)</label>
+                <input type="checkbox" id="cbLowercase" checked>
+            </div>
+            <div class="control-row">
+                <label for="cbNumbers">123 (Цифры)</label>
+                <input type="checkbox" id="cbNumbers" checked>
+            </div>
+            <div class="control-row">
+                <label for="cbSymbols">#$& (Символы)</label>
+                <input type="checkbox" id="cbSymbols">
+            </div>
+        </div>
+
+        <br>
+        <button class="btn btn-secondary" id="btnGenerate">🔄 Сгенерировать</button>
+        <button class="btn btn-secondary" id="btnCopy" style="margin-top: 10px;">📋 Копировать</button>
+    </div>
+
+    <div class="card save-section">
+        <h2>Сохранить в Apple Passwords</h2>
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 15px;">
+            Введите название аккаунта и нажмите «Сохранить», чтобы Safari предложил запомнить пароль.
+        </p>
+
+        <form id="saveForm" action="#" method="POST" autocomplete="on">
+            <div class="input-group">
+                <input type="text" 
+                       id="usernameField" 
+                       name="username" 
+                       class="input-field" 
+                       placeholder="Логин или название сервиса" 
+                       autocomplete="username" 
+                       required>
+            </div>
+
+            <div class="input-group">
+                <input type="password" 
+                       id="passwordField" 
+                       name="password" 
+                       class="input-field hidden-visually" 
+                       autocomplete="new-password" 
+                       readonly>
+            </div>
+
+            <button type="submit" class="btn btn-primary">💾 Сохранить в Keychain</button>
+        </form>
+    </div>
+</div>
+
+<div id="toast" class="toast">Скопировано!</div>
+
+<script>
+    /*
+     * =========================================
+     * PURE JAVASCRIPT LOGIC
+     * =========================================
+     */
+
+    // --- DOM Elements ---
+    const outputEl = document.getElementById('passwordOutput');
+    const lengthRange = document.getElementById('lengthRange');
+    const lengthVal = document.getElementById('lengthVal');
+    const strengthFill = document.getElementById('strengthFill');
+    
+    // Checkboxes
+    const cbUpper = document.getElementById('cbUppercase');
+    const cbLower = document.getElementById('cbLowercase');
+    const cbNum = document.getElementById('cbNumbers');
+    const cbSym = document.getElementById('cbSymbols');
+
+    // Buttons
+    const btnGenerate = document.getElementById('btnGenerate');
+    const btnCopy = document.getElementById('btnCopy');
+
+    // Form Elements
+    const saveForm = document.getElementById('saveForm');
+    const usernameField = document.getElementById('usernameField');
+    const passwordField = document.getElementById('passwordField'); // Скрытое поле в форме
+
+    // --- State ---
+    const chars = {
+        upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+        lower: 'abcdefghijklmnopqrstuvwxyz',
+        number: '0123456789',
+        symbol: '!@#$%^&*()_+~`|}{[]:;?><,./-='
+    };
+
+    // --- Functions ---
+
+    /**
+     * Генерирует криптографически стойкий пароль
+     * Использует crypto.getRandomValues вместо Math.random для безопасности.
+     */
+    function generatePassword() {
+        const length = parseInt(lengthRange.value);
+        let validChars = '';
+        
+        if (cbUpper.checked) validChars += chars.upper;
+        if (cbLower.checked) validChars += chars.lower;
+        if (cbNum.checked) validChars += chars.number;
+        if (cbSym.checked) validChars += chars.symbol;
+
+        if (validChars === '') {
+            outputEl.textContent = 'Выберите опции!';
+            return;
+        }
+
+        let password = '';
+        const array = new Uint32Array(length);
+        window.crypto.getRandomValues(array);
+
+        for (let i = 0; i < length; i++) {
+            password += validChars[array[i] % validChars.length];
+        }
+
+        // Обновляем UI
+        outputEl.textContent = password;
+        
+        // Синхронизируем с полем формы для Apple Passwords
+        passwordField.value = password;
+
+        evaluateStrength(password);
+    }
+
+    /**
+     * Оценка надежности пароля (простая эвристика)
+     */
+    function evaluateStrength(password) {
+        let score = 0;
+        if (password.length > 8) score += 1;
+        if (password.length > 12) score += 1;
+        if (/[A-Z]/.test(password)) score += 1;
+        if (/[0-9]/.test(password)) score += 1;
+        if (/[^A-Za-z0-9]/.test(password)) score += 1;
+
+        const maxScore = 5;
+        const percent = (score / maxScore) * 100;
+        
+        strengthFill.style.width = percent + '%';
+        
+        if (score <= 2) strengthFill.style.backgroundColor = 'var(--danger-color)';
+        else if (score === 3) strengthFill.style.backgroundColor = '#ffcc00'; // Yellow
+        else strengthFill.style.backgroundColor = 'var(--success-color)';
+    }
+
+    /**
+     * Копирование в буфер обмена
+     */
+    function copyToClipboard() {
+        const text = outputEl.textContent;
+        if (!text || text === 'Выберите опции!') return;
+
+        navigator.clipboard.writeText(text).then(() => {
+            showToast('Пароль скопирован');
+        }).catch(err => {
+            console.error('Ошибка копирования:', err);
+            // Фолбэк для старых iOS
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand("Copy");
+            textArea.remove();
+            showToast('Пароль скопирован');
+        });
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // --- Event Listeners ---
+
+    // Обновление длины при перетаскивании ползунка
+    lengthRange.addEventListener('input', (e) => {
+        lengthVal.textContent = e.target.value;
+        generatePassword();
+    });
+
+    // Генерация при изменении чекбоксов
+    [cbUpper, cbLower, cbNum, cbSym].forEach(cb => {
+        cb.addEventListener('change', generatePassword);
+    });
+
+    btnGenerate.addEventListener('click', generatePassword);
+    btnCopy.addEventListener('click', copyToClipboard);
+
+    /**
+     * ОБРАБОТКА СОХРАНЕНИЯ (Важная часть для Apple Passwords)
+     */
+    saveForm.addEventListener('submit', (e) => {
+        // Мы НЕ делаем e.preventDefault() сразу, потому что Safari 
+        // иногда требует реальной "отправки" или перезагрузки для срабатывания диалога.
+        // Однако на SPA/Static сайтах перезагрузка сбрасывает состояние.
+        
+        // Решение:
+        // Мы даем браузеру понять, что форма отправлена, но блокируем
+        // полноценный POST запрос на сервер (которого нет).
+        
+        e.preventDefault(); 
+
+        const username = usernameField.value;
+        const password = passwordField.value;
+
+        if(!username || !password) return;
+
+        // Визуальная обратная связь
+        showToast('Попытка сохранения...');
+
+        // ХАК ДЛЯ SAFARI / KEYCHAIN:
+        // Браузеры реагируют на событие submit.
+        // Поскольку мы отменили стандартное поведение (preventDefault),
+        // некоторые старые версии могут не предложить сохранение.
+        // Но современные Safari (iOS 15+) отлично понимают preventDefault
+        // если поля формы заполнены и событие было инициировано пользователем (isTrusted).
+        
+        // Если вдруг Safari не предлагает сохранить, единственный 100% способ — 
+        // это реально перезагрузить страницу с query-параметром (hacky way):
+        // window.location.href = "?saved=true"; 
+        
+        // Но для чистого UX мы оставим preventDefault(). 
+        // Совет: Чтобы Safari точно сработал, пользователь должен тапнуть по полю логина,
+        // а потом нажать кнопку Submit.
+    });
+
+    // --- Init ---
+    // Генерируем первый пароль при загрузке
+    generatePassword();
+
+    /*
+     * ---------------------------------------------------------
+     * FAQ: ТЕХНИЧЕСКИЕ ПОЯСНЕНИЯ (Комментарии для разработчика)
+     * ---------------------------------------------------------
+     * * ВОПРОС 1: Почему Apple Passwords работает только через HTML-формы?
+     * ОТВЕТ: 
+     * Браузеры (Safari, Chrome) используют эвристический анализ DOM.
+     * Они ищут структуру <form> и инпуты с определенными атрибутами 
+     * (type="password", autocomplete="...").
+     * Это сделано для безопасности. Если бы браузер сканировал любые переменные JS,
+     * злоумышленники могли бы подсовывать фейковые данные в менеджер паролей.
+     * Форма служит явным контрактом: "Пользователь отправляет учетные данные".
+     *
+     * ВОПРОС 2: Почему нельзя сохранить пароль напрямую через JS API?
+     * ОТВЕТ:
+     * Существует Credential Management API (navigator.credentials.store()),
+     * но он сложен в реализации для статических сайтов (требует HTTPS, 
+     * правильных заголовков и часто привязки к реальной аутентификации).
+     * Кроме того, Safari имеет очень строгие ограничения на его использование.
+     * "Старый добрый" метод с <form> и autocomplete работает надежнее всего 
+     * на 100% устройств Apple без сложной настройки бэкенда.
+     */
+
+</script>
+
+</body>
+</html>
