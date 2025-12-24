@@ -1,4 +1,5 @@
 # Genpass
+https://ilovedukkk.github.io/Genpass/
 Минималистичный и безопасный генератор паролей, оптимизированный для работы с Apple iCloud Keychain и Safari.
 🚀 Возможности
 
